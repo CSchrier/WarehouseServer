@@ -5,22 +5,24 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Scanner;
 
 public class Main {
     static String str;
     static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM/dd/yyyy-HH:mm");
-    static File binData = new File("D:\\bindata.txt");
-    static File roomData = new File("D:\\roomdata.txt");
     static File palletData = new File("D:\\palletdata.txt");
-    static File bayData = new File("C:\\Users\\bigwheel\\IdeaProjects\\WarehouseServer\\data.txt");
+    static File bayData = new File("/home/keystone/Documents/data.txt");
     static Scanner scan;
     static String time;
+    static String clientIP;
 
     static Socket s;
     public static void main(String[] args) throws IOException {
 	    ServerSocket ss = new ServerSocket(4999);
+
 
         String aisle;
         int bay;
@@ -32,6 +34,7 @@ public class Main {
         System.out.println("I am alive!");
         while(true){
             s = ss.accept();
+            clientIP = s.getInetAddress().toString();
             System.out.println("Client Connected");
             InputStreamReader in = new InputStreamReader(s.getInputStream());
             BufferedReader br = new BufferedReader(in);
@@ -70,6 +73,11 @@ public class Main {
                     sendOfficeData();
                 }else if(Integer.parseInt(inputData[1])==1){  // 1 = Closed skid, resale
                     clearRoomData();
+                }else if(Integer.parseInt(inputData[1])==2){
+                    returnJobs();
+                }
+                else if(Integer.parseInt(inputData[1])==3){
+                    returnLocations(Integer.parseInt(inputData[2]));
                 }
                 
             }
@@ -80,9 +88,78 @@ public class Main {
         }
     }
 
+    private static void returnLocations(int parseInt) throws IOException {
+        LinkedList<String> locations = new LinkedList<>();
+        scan = new Scanner(bayData);
+        String string;
+        BufferedReader br = new BufferedReader(new FileReader(bayData));
+        while((string = br.readLine()) != null) {
+
+
+            String[] stringParse = string.split("\\s");
+            String job = stringParse[2];
+            int stringJob = Integer.parseInt(job);
+            if(stringJob==parseInt){
+                locations.add(stringParse[0]+stringParse[1]);
+            }
+
+
+        }
+        br.close();
+        StringBuffer buffer = new StringBuffer();
+
+        for(int i = 0; i< locations.size();i++) {
+            buffer.append(locations.get(i)+ " ");
+        }
+        PrintWriter pr = new PrintWriter(s.getOutputStream());
+        pr.println(buffer);
+        pr.flush();
+        pr.close();
+
+
+    }
+
+    private static void returnJobs() throws IOException {
+        LinkedList<Integer> jobs = new LinkedList<>();
+
+        scan = new Scanner(bayData);
+        String string;
+        BufferedReader br = new BufferedReader(new FileReader(bayData));
+        while((string = br.readLine()) != null) {
+
+
+            String[] stringParse = string.split("\\s");
+            String job = stringParse[2];
+            int stringJob = Integer.parseInt(job);
+            if(!jobs.contains(stringJob)&&stringJob!=0){
+                jobs.add(stringJob);
+            }
+
+        }
+        br.close();
+
+        int[] sortedJobs = new int[jobs.size()];
+
+        for(int i = 0;i<jobs.size();i++) {
+            sortedJobs[i]=jobs.get(i);
+
+        }
+        StringBuffer buffer = new StringBuffer();
+        Arrays.sort(sortedJobs);
+        for(int i = 0; i<sortedJobs.length;i++) {
+            buffer.append(sortedJobs[i]);
+        }
+        PrintWriter pr = new PrintWriter(s.getOutputStream());
+        pr.println(buffer);
+        pr.flush();
+        pr.close();
+
+
+    }
+
     private static void pickGood(String[] inputData) throws IOException {
         time = getTime();
-        System.out.println("Receiving picked finished goods update from warehouse at " + time);
+        System.out.println("Receiving picked finished goods update from "+clientIP+" at " + time);
 
         int ID = Integer.parseInt(inputData[2]);
 
@@ -140,7 +217,7 @@ public class Main {
 
     private static void clearRoomData() throws IOException {
         time = getTime();
-        System.out.println("responding to office's clear audit room request at " + time);
+        System.out.println("responding to office's clear audit room request from "+clientIP+" at " + time);
         scan = new Scanner(bayData);
         StringBuffer buffer = new StringBuffer();
 
@@ -165,7 +242,8 @@ public class Main {
 
     private static void sendOfficeData() throws IOException {
         time = getTime();
-        System.out.println("responding to office's data request at " + time);
+
+        System.out.println("responding to office's data request from " +clientIP+ " at " + time);
         scan = new Scanner(bayData);
         StringBuffer buffer = new StringBuffer();
 
@@ -187,7 +265,7 @@ public class Main {
     private static void addFinishedGoodsToBay(String[] inputData) throws IOException  {
 
         time = getTime();
-        System.out.println("Receiving finished goods update from warehouse at " + time);
+        System.out.println("Receiving finished goods update from " + clientIP + " at " + time);
         String[] bayParse = inputData[3].split("\\-");
         int ID = Integer.parseInt(inputData[2]);
         String aisle = bayParse[0].toUpperCase(Locale.ROOT);
@@ -282,13 +360,14 @@ public class Main {
 
     static void addBinToBay(String[] input) throws IOException {
         time = getTime();
-        System.out.println("Receiving bin update from warehouse at " + time);
+        System.out.println("Receiving bin update from "+clientIP+" at " + time);
         String[] binParse = input[2].split("\\-");
         String[] bayParse = input[3].split("\\-");
         int job = Integer.parseInt(binParse[0]);
         int bin = Integer.parseInt(binParse[1]);
         String aisle = bayParse[0].toUpperCase(Locale.ROOT);
         int bay = Integer.parseInt(bayParse[1]);
+        System.out.println("Bin " + bin + "added to bay "+ bay);
 
         //first we must clear the bay the bin MAY have been in
         scan = new Scanner(bayData);
@@ -356,9 +435,11 @@ public class Main {
 
         PrintWriter PW = new PrintWriter(bayData);
 
-
-        fileContents = fileContents.replaceAll(string,aisle + " " + bay + " " + job + " " + bin + " " + time);
-
+        if(string!=null) {
+            fileContents = fileContents.replaceAll(string, aisle + " " + bay + " " + job + " " + bin + " " + time);
+        }else{
+            System.out.println("null replacement string sent");
+        }
 
 
 
