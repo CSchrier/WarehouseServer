@@ -16,7 +16,7 @@ public class Main {
     static File palletData = new File("D:\\palletdata.txt");
     static File bayData = new File("/home/keystone/Documents/data.txt");
 
-    static File logFile = new File("home/keystone/Documents/log.txt");
+    static File logFile = new File("/home/keystone/Documents/log.txt");
     static Scanner scan;
     static String time;
     static String clientIP;
@@ -31,7 +31,7 @@ public class Main {
         String[] inputData;
 
         //console output for server start
-        System.out.println("I am alive!");
+        System.out.println("Server started!");
 
         //main system loop, waits on socket messages
         while(true){
@@ -99,6 +99,8 @@ public class Main {
                     replyToAndroidLocationRequest(Integer.parseInt(inputData[2]));
                 }
                 
+            }else{
+                continue;
             }
 
 
@@ -148,6 +150,12 @@ public class Main {
 
     }
 
+    private static void writeToLog(String messageToLog) throws IOException {
+        time = getTime();
+        FileWriter fw = new FileWriter(logFile, true);
+        fw.write(time +" - " + messageToLog+"\n");
+        fw.close();
+    }
     private static void returnJobs() throws IOException {
         LinkedList<Integer> jobs = new LinkedList<>();
 
@@ -176,7 +184,7 @@ public class Main {
         StringBuffer buffer = new StringBuffer();
         Arrays.sort(sortedJobs);
         for(int i = 0; i<sortedJobs.length;i++) {
-            buffer.append(sortedJobs[i]);
+            buffer.append(sortedJobs[i]+ " ");
         }
         PrintWriter pr = new PrintWriter(s.getOutputStream());
         pr.println(buffer);
@@ -406,7 +414,7 @@ public class Main {
         int bay = Integer.parseInt(bayParse[1]);
 
 
-        System.out.println("Attempting to add " + input[2] + "added to " + input[3]);
+        System.out.println("Attempting to add " + input[2] + " to " + input[3]);
 
         //first we must clear the bay the bin MAY have been in case we're moving one location to another
         scan = new Scanner(bayData); //attach data file
@@ -473,9 +481,11 @@ public class Main {
         String fileContents = buffer.toString();
         scan.close();
 
-        PrintWriter PW = new PrintWriter(bayData);
+
 
         if(currentLine!=null) {
+            String[] overwrittenContent = currentLine.split("\\s");
+            writeToLog(overwrittenContent[2]+"-"+overwrittenContent[3]+" from " + overwrittenContent[0]+"-"+overwrittenContent[1]+" to be overwritten");
             fileContents = fileContents.replaceAll(currentLine, aisle + " " + bay + " " + job + " " + bin + " " + time);
         }else{
             System.out.println("Error: "+aisle+"-"+bay+" not found");
@@ -489,6 +499,7 @@ public class Main {
         pr.println(1);
         pr.flush();
         System.out.println("Bin Update Successful");
+        writeToLog(job+"-"+bin+" to "+aisle+"-"+bay);
     }
     static void addBinToRoom(String[] input) throws IOException {
         /*
