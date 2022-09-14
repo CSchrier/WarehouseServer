@@ -15,34 +15,43 @@ public class Main {
     static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM/dd/yyyy-HH:mm");
     static File palletData = new File("D:\\palletdata.txt");
     static File bayData = new File("/home/keystone/Documents/data.txt");
+
+    static File logFile = new File("home/keystone/Documents/log.txt");
     static Scanner scan;
     static String time;
     static String clientIP;
 
     static Socket s;
     public static void main(String[] args) throws IOException {
-	    ServerSocket ss = new ServerSocket(4999);
 
+        //Opens socket 4999 on application start
+        ServerSocket ss = new ServerSocket(4999);
 
-        String aisle;
-        int bay;
-        int job;
-        int bin;
-        String time;
-        String line = "";
+        //initialize string array for input data
         String[] inputData;
+
+        //console output for server start
         System.out.println("I am alive!");
+
+        //main system loop, waits on socket messages
         while(true){
+
+            //accepts socket connection and records client IP and time
             s = ss.accept();
             clientIP = s.getInetAddress().toString();
-            System.out.println("Client Connected");
+            time = getTime();
+
+            System.out.println(time + " - Incoming Client Connection");
+
+            //reads client input message and splits the message into the inputData array
             InputStreamReader in = new InputStreamReader(s.getInputStream());
             BufferedReader br = new BufferedReader(in);
             String str = br.readLine();
             inputData = str.split("\\s");
 
 
-
+            //function decision tree
+            //first block for warehouse clients
             if(Integer.parseInt(inputData[0])==0){ //warehouse client requests/submits
                 //examples of expected warehouse client data
                 //0 0 59059-1 A-101
@@ -68,53 +77,73 @@ public class Main {
                     addScrapToBay(inputData);
                 }
 
+
+            //second block for responding to database queries from warehouse clients
             }else if(Integer.parseInt(inputData[0])==1){
+
+
                 if(Integer.parseInt(inputData[1])==0){
-                    sendOfficeData();
+                    desktopClientDataDump();
+
+
                 }else if(Integer.parseInt(inputData[1])==1){  // 1 = Closed skid, resale
                     clearRoomData();
+
+
                 }else if(Integer.parseInt(inputData[1])==2){
                     returnJobs();
                 }
+
+                //returns location of an android client queried job
                 else if(Integer.parseInt(inputData[1])==3){
-                    returnLocations(Integer.parseInt(inputData[2]));
+                    replyToAndroidLocationRequest(Integer.parseInt(inputData[2]));
                 }
                 
             }
 
 
-
-            System.out.println("Client Detached");
+            time = getTime();
+            System.out.println(time + " - Client successfully responded\n\n");
         }
     }
 
-    private static void returnLocations(int parseInt) throws IOException {
-        LinkedList<String> locations = new LinkedList<>();
-        scan = new Scanner(bayData);
-        String string;
-        BufferedReader br = new BufferedReader(new FileReader(bayData));
-        while((string = br.readLine()) != null) {
+
+    //function reply to android location request takes a job number and returns the locations of that job to the requesting client
+    private static void replyToAndroidLocationRequest(int searchedJob) throws IOException {
 
 
-            String[] stringParse = string.split("\\s");
-            String job = stringParse[2];
-            int stringJob = Integer.parseInt(job);
-            if(stringJob==parseInt){
-                locations.add(stringParse[0]+stringParse[1]);
+        LinkedList<String> locations = new LinkedList<>(); //initialize linkedlist to be filled with locations
+        scan = new Scanner(bayData);                       //initialize scanner for database
+        String string;                                     //temp holding string
+
+        BufferedReader br = new BufferedReader(new FileReader(bayData));  //starts a bufferedreader pointing at database
+
+
+        while((string = br.readLine()) != null) { //loops through database lines while they exist
+            //example line
+            //A 204 59053 4 02/01/2022-09:55
+            String[] stringParse = string.split("\\s");    //breaks apart database line into seperate elements of an array
+            String job = stringParse[2];       //gets the job number string from database line
+            int stringJob = Integer.parseInt(job);  //converts job number string to an int
+            if(stringJob==searchedJob){    //compares the job number to our searched number
+                locations.add(stringParse[0]+stringParse[1]);  //adds the aisle and bay to the locations linkedlist
             }
 
 
         }
         br.close();
-        StringBuffer buffer = new StringBuffer();
 
-        for(int i = 0; i< locations.size();i++) {
-            buffer.append(locations.get(i)+ " ");
+
+        StringBuffer locationOutput = new StringBuffer(); //stringbuffer to hold our output message of locations
+
+        for(int i = 0; i< locations.size();i++) {         //walks the list
+            locationOutput.append(locations.get(i)+ " "); //append locations to our text output
         }
-        PrintWriter pr = new PrintWriter(s.getOutputStream());
-        pr.println(buffer);
-        pr.flush();
-        pr.close();
+        PrintWriter replyToClient = new PrintWriter(s.getOutputStream()); //open an output stream to our connected client
+
+        replyToClient.println(locationOutput); //send our client the locations of their searched bins
+        replyToClient.flush(); //make sure the whole reply has sent
+        replyToClient.close(); //close writer
 
 
     }
@@ -240,10 +269,12 @@ public class Main {
 
     }
 
-    private static void sendOfficeData() throws IOException {
-        time = getTime();
 
-        System.out.println("responding to office's data request from " +clientIP+ " at " + time);
+    private static void desktopClientDataDump() throws IOException {  //replies to desktop client's request for all bay data
+
+        time = getTime(); //get current time
+
+        System.out.println("responding to desktop client " +clientIP+ " data request at " + time); //system cli output
         scan = new Scanner(bayData);
         StringBuffer buffer = new StringBuffer();
 
@@ -360,49 +391,59 @@ public class Main {
 
     static void addBinToBay(String[] input) throws IOException {
         time = getTime();
-        System.out.println("Receiving bin update from "+clientIP+" at " + time);
-        String[] binParse = input[2].split("\\-");
-        String[] bayParse = input[3].split("\\-");
+
+        System.out.println("Receiving bin update from "+clientIP);
+
+        //note - expected data looks like:
+        // 0 0 (job)-(bin) (aisle)-(bay)
+        String[] binParse = input[2].split("\\-"); //breaks apart the job-bin input
+        String[] bayParse = input[3].split("\\-"); //breaks apart the aisle-bay input
+
+        //assigns the individual parts of the above job bin aisle and bay to variables
         int job = Integer.parseInt(binParse[0]);
         int bin = Integer.parseInt(binParse[1]);
         String aisle = bayParse[0].toUpperCase(Locale.ROOT);
         int bay = Integer.parseInt(bayParse[1]);
-        System.out.println("Bin " + bin + "added to bay "+ bay);
-
-        //first we must clear the bay the bin MAY have been in
-        scan = new Scanner(bayData);
 
 
-        String string;
-        String binToFind = job + " " + bin;
+        System.out.println("Attempting to add " + input[2] + "added to " + input[3]);
 
+        //first we must clear the bay the bin MAY have been in case we're moving one location to another
+        scan = new Scanner(bayData); //attach data file
+
+
+        String currentLine; //intialize temp string to hold current line in database
+        String binToFind = job + " " + bin; //create a string in the format of the database of the job and bin
+
+        //create a buffered reader of the file
         BufferedReader br = new BufferedReader(new FileReader(bayData));
-        while((string = br.readLine()) != null) {
+        while((currentLine = br.readLine()) != null) { //load lines 1 by 1 of the database until there aren't anymore
 
-            scan = new Scanner(string);
-            if(scan.findInLine(binToFind)!=null) {
-                break;
+            scan = new Scanner(currentLine); //attach the current line to a scanner
+            if(scan.findInLine(binToFind)!=null) { //check for our searched text within the line, returns null if not found
+                break; //break if we find the line with our search, may not exist
             }
 
         }
         br.close();
 
 
-        if(string != null){
-            String[] stringParse = string.split("\\s");
+        if(currentLine != null){ //if we found the text
 
-
-
+            String[] stringParse = currentLine.split("\\s"); //create an array to break apart the line containing our searched data
 
             scan = new Scanner(bayData);
             StringBuffer buffer = new StringBuffer();
 
-            while (scan.hasNextLine()) {
+            while (scan.hasNextLine()) { //loads the entire database into a string
                 buffer.append(scan.nextLine()+System.lineSeparator());
             }
-            String fileContents = buffer.toString();
+
+            String fileContents = buffer.toString();//creates a string out of the loaded buffer
             scan.close();
-            fileContents = fileContents.replaceAll(string,stringParse[0]+" "+stringParse[1]+" 0 0 0");
+
+            //takes the line we found to have the bin that is being moved and replaces it with blanked info then writes to file
+            fileContents = fileContents.replaceAll(currentLine,stringParse[0]+" "+stringParse[1]+" 0 0 0");
             FileWriter writer = new FileWriter(bayData);
             writer.append(fileContents);
             writer.flush();
@@ -413,9 +454,9 @@ public class Main {
 
         String bayToFind = aisle + " " + bay;
         br = new BufferedReader(new FileReader(bayData));
-        while((string = br.readLine()) != null) {
+        while((currentLine = br.readLine()) != null) {
 
-            scan = new Scanner(string);
+            scan = new Scanner(currentLine);
             if(scan.findInLine(bayToFind)!=null) {
                 break;
             }
@@ -432,17 +473,13 @@ public class Main {
         String fileContents = buffer.toString();
         scan.close();
 
-
         PrintWriter PW = new PrintWriter(bayData);
 
-        if(string!=null) {
-            fileContents = fileContents.replaceAll(string, aisle + " " + bay + " " + job + " " + bin + " " + time);
+        if(currentLine!=null) {
+            fileContents = fileContents.replaceAll(currentLine, aisle + " " + bay + " " + job + " " + bin + " " + time);
         }else{
-            System.out.println("null replacement string sent");
+            System.out.println("Error: "+aisle+"-"+bay+" not found");
         }
-
-
-
 
         FileWriter writer = new FileWriter(bayData);
         writer.append(fileContents);
