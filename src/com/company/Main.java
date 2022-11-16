@@ -64,17 +64,23 @@ public class Main {
                         addBinToRoom(inputData);
                     }
 
-                }else if(Integer.parseInt(inputData[1])==1){  // 1 = Closed skid, resale
+                }
+
+                else if(Integer.parseInt(inputData[1])==1){  // 1 = Closed skid, resale
                     if(inputData[3].equals("picked")){
                         pickGood(inputData);
                     }else{
                         addFinishedGoodsToBay(inputData);
                     }
+                }
 
-
-
-                }else if(Integer.parseInt(inputData[1])==2){ // 2 = scrap
+                else if(Integer.parseInt(inputData[1])==2){ // 2 = scrap
                     addScrapToBay(inputData);
+                }
+
+                else if(Integer.parseInt(inputData[1])==3){ // 3 = aisle audit request
+                    String aisle = inputData[2];
+                    replyToAndroidAuditRequest(aisle);
                 }
 
 
@@ -107,6 +113,43 @@ public class Main {
             time = getTime();
             System.out.println(time + " - Client successfully responded\n\n");
         }
+    }
+
+    //function takes an aisle request from associated android app and replies with every bay of the given aisles contents
+    private static void replyToAndroidAuditRequest(String aisle) throws IOException {
+
+        LinkedList<String> aisleBays = new LinkedList<>(); //initialize linkedlist to be filled bays from the searched aisle
+        scan = new Scanner(bayData);                       //initialize scanner for database
+        String string;                                     //temp holding string
+
+        BufferedReader br = new BufferedReader(new FileReader(bayData));  //starts a bufferedreader pointing at database
+
+
+        while((string = br.readLine()) != null) { //loops through database lines while they exist
+            //example line
+            //A 204 59053 4 02/01/2022-09:55
+            String[] stringParse = string.split("\\s");    //breaks apart database line into seperate elements of an array
+            String aisleParse = stringParse[0];       //gets the aisle string from database line
+            if(aisle==aisleParse){    //compares the aisle to our searched for aisle
+                aisleBays.add(stringParse[0]+"/"+stringParse[1]+"/"+stringParse[2]+"/"+stringParse[3]);  //adds the aisle, bay, job#, and bin# to the aisleBays linkedlist
+            }
+
+
+        }
+        br.close();
+
+
+        StringBuffer aisleContentsOutput = new StringBuffer(); //stringbuffer to hold our output message of AisleContents
+
+        for(int i = 0; i< aisleBays.size();i++) {         //walks the list
+            aisleContentsOutput.append(aisleBays.get(i)+ " "); //append locations to our text output
+        }
+        PrintWriter replyToClient = new PrintWriter(s.getOutputStream()); //open an output stream to our connected client
+
+        replyToClient.println(aisleContentsOutput); //send our client the locations of their searched bins
+        replyToClient.flush(); //make sure the whole reply has sent
+        replyToClient.close(); //close writer
+
     }
 
 
