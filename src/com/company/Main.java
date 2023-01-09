@@ -12,11 +12,11 @@ import java.util.Scanner;
 
 public class Main {
     static String str;
-    static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM/dd/yyyy-HH:mm");
+    static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM-dd-yyyy-HH:mm");
     static File palletData = new File("D:\\palletdata.txt");
-    static File bayData = new File("/home/keystone/Documents/data.txt");
+    static File bayData = new File("/home/keystoneserver/Documents/data.txt");
 
-    static File logFile = new File("/home/keystone/Documents/log.txt");
+    static File logFile = new File("/home/keystoneserver/Documents/log.txt");
     static Scanner scan;
     static String time;
     static String clientIP;
@@ -439,6 +439,14 @@ public class Main {
 
 
     }
+
+
+
+
+
+
+
+
 
     static void addBinToBay(String[] input) throws IOException {
         time = getTime();
