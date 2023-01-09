@@ -451,14 +451,20 @@ public class Main {
         String[] bayParse = input[3].split("\\-"); //breaks apart the aisle-bay input
 
         //assigns the individual parts of the above job bin aisle and bay to variables
-        int job = Integer.parseInt(binParse[0]);
-        int bin = Integer.parseInt(binParse[1]);
+        String job = binParse[0];
+        String bin = binParse[1];
         String aisle = bayParse[0].toUpperCase(Locale.ROOT);
         int bay = Integer.parseInt(bayParse[1]);
 
+        if(job == "0"){
+            job = "null";
+        }
+        if(bin == "0"){
+            bin = "null";
+        }
 
 
-        String urlString = "http://localhost/update_element.php?aisle="+aisle+"&bay="+bay+"&job="+job+"&bin="+bin;
+        String urlString = "http://localhost/update_bays.php?aisle="+aisle+"&bay="+bay+"&job="+job+"&bin="+bin;
         URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
