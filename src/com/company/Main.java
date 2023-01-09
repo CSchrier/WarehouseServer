@@ -456,15 +456,16 @@ public class Main {
         String aisle = bayParse[0].toUpperCase(Locale.ROOT);
         int bay = Integer.parseInt(bayParse[1]);
 
-        if(job == "0"){
+        if(job.equals("0")){
             job = "null";
         }
-        if(bin == "0"){
+        if(bin.equals("0")){
             bin = "null";
         }
 
 
-        String urlString = "http://localhost/update_bays.php?aisle="+aisle+"&bay="+bay+"&job="+job+"&bin="+bin;
+        String urlString = "http://localhost/update_bay.php?aisle="+aisle+"&bay="+bay+"&job="+job+"&bin="+bin;
+        System.out.println(urlString);
         URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
