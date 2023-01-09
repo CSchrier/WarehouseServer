@@ -49,6 +49,7 @@ public class Main {
             InputStreamReader in = new InputStreamReader(s.getInputStream());
             BufferedReader br = new BufferedReader(in);
             String str = br.readLine();
+            System.out.println(str);
             inputData = str.split("\\s");
 
 
