@@ -1,8 +1,10 @@
 package com.company;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -441,13 +443,51 @@ public class Main {
     }
 
 
+    static void addBinToBay(String[] input) throws IOException {
+
+        //note - expected data looks like:
+        // 0 0 (job)-(bin) (aisle)-(bay)
+        String[] binParse = input[2].split("\\-"); //breaks apart the job-bin input
+        String[] bayParse = input[3].split("\\-"); //breaks apart the aisle-bay input
+
+        //assigns the individual parts of the above job bin aisle and bay to variables
+        int job = Integer.parseInt(binParse[0]);
+        int bin = Integer.parseInt(binParse[1]);
+        String aisle = bayParse[0].toUpperCase(Locale.ROOT);
+        int bay = Integer.parseInt(bayParse[1]);
+
+
+
+        String urlString = "http://localhost/update_element.php?aisle="+aisle+"&bay="+bay+"&job="+job+"&bin="+bin;
+        URL url = new URL(urlString);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+
+        int responseCode = conn.getResponseCode();
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            // Print the response from the server
+            System.out.println(response.toString());
+            writeToLog(job+"-"+bin+" to "+aisle+"-"+bay);
+        } else {
+            System.out.println("Error: HTTP response code " + responseCode);
+            writeToLog("Error writing to file message:  "+ "Error: HTTP response code " + responseCode);
+        }
+
+    }
 
 
 
 
 
-
-
+    /*
     static void addBinToBay(String[] input) throws IOException {
         time = getTime();
 
@@ -552,6 +592,8 @@ public class Main {
         System.out.println("Bin Update Successful");
         writeToLog(job+"-"+bin+" to "+aisle+"-"+bay);
     }
+
+     */
     static void addBinToRoom(String[] input) throws IOException {
         /*
         String[] binParse = input[2].split("\\-");
